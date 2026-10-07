@@ -106,6 +106,33 @@ def calculator(prefix, courses_df, default_cgpa, default_credits, default_course
     return new_cgpa, total_credits
 
 
+def require_login():
+    """Google sign-in, restricted to the emails listed in secrets (fails closed)."""
+    try:
+        configured = "auth" in st.secrets and "allowed_emails" in st.secrets
+    except FileNotFoundError:  # no secrets file at all
+        configured = False
+    if not configured:
+        st.error("Sign-in is not configured. Add `[auth]` and `allowed_emails` to the app secrets.")
+        st.stop()
+    if not st.user.is_logged_in:
+        st.title("🎓 CGPA Calculator")
+        st.write("Please sign in to continue.")
+        st.button("Sign in with Google", on_click=st.login, type="primary")
+        st.stop()
+    allowed = {e.strip().lower() for e in st.secrets["allowed_emails"]}
+    email = str(st.user.get("email", "")).lower()
+    if not email or email not in allowed or not st.user.get("email_verified", True):
+        st.error(f"{email or 'This account'} is not authorised to use this app.")
+        st.button("Sign out", on_click=st.logout)
+        st.stop()
+    with st.sidebar:
+        st.caption(f"Signed in as {email}")
+        st.button("Sign out", on_click=st.logout)
+
+
+require_login()
+
 st.title("🎓 CGPA Calculator")
 
 name = st.radio("Student", list(PROFILES), horizontal=True)
